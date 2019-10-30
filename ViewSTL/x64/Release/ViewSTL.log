@@ -1,8 +1,8 @@
 ﻿  main.cpp
   Generating code
-  8 of 226 functions ( 3.5%) were compiled, the rest were copied from previous compilation.
+  7 of 370 functions ( 1.9%) were compiled, the rest were copied from previous compilation.
     0 functions were new in current compilation
-    12 functions had inline decision re-evaluated but remain unchanged
+    3 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
-  ViewSTL.vcxproj -> C:\Users\Patrick\#Studium\M 1. Semester\Computer Graphik\ViewSTL\x64\Release\ViewSTL.exe
-  ViewSTL.vcxproj -> C:\Users\Patrick\#Studium\M 1. Semester\Computer Graphik\ViewSTL\x64\Release\ViewSTL.pdb (Full PDB)
+  ViewSTL.vcxproj -> C:\Users\Patrick\#Studium\M 1. Semester\Computer Graphik\Computer-Graphics\ViewSTL\x64\Release\ViewSTL.exe
+  ViewSTL.vcxproj -> C:\Users\Patrick\#Studium\M 1. Semester\Computer Graphik\Computer-Graphics\ViewSTL\x64\Release\ViewSTL.pdb (Full PDB)
