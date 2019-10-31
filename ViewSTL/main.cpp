@@ -3,11 +3,14 @@
 // und http://users.polytech.unice.fr/~buffa/cours/synthese_image/DOCS/Tutoriaux/Nehe/opengl.htm
 // und https://www.opengl.org/archives/resources/code/samples/glut_examples/examples/highlight.c
 
+#define _USE_MATH_DEFINES
+
 #include <map>
 #include <cmath>
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <math.h>
 #include <GL/glut.h>
 #include <GL/glu.h>
 #include <GL/gl.h>
@@ -96,7 +99,7 @@ public:
 // Reading the STL File
 // Once we understand the STL file format, and have a vector class which can handle most of the binary data reading, it's not much work to put together a function to read a whole STL file. Here, we'll read an STL file into a std::vector of tri's
 
-void calc_vertexNormals(vector <CTriangle>&triangles, map<string, CVector>& vertices)
+void calcVertices(vector <CTriangle>&triangles, map<string, CVector>& vertices)
 {
 	cout << "Calculating vertex normals for " << triangles.size() << " triangles" << endl;
 
@@ -109,8 +112,40 @@ void calc_vertexNormals(vector <CTriangle>&triangles, map<string, CVector>& vert
 			triangles[t].m_vertexNormals[v]->m_z += triangles[t].m_faceNormal.m_z;
 		}
 	}
+}
 
-	for(auto it = vertices.begin(); it != vertices.end(); it++)
+void smoothEdges(vector <CTriangle>&triangles, map<string, CVector>& vertices)
+{
+	cout << "Smoothing edges for " << triangles.size() << " triangles" << endl;
+
+	const GLfloat limit = (float)(M_PI / 4.16);
+
+	for (int t = 0; t < triangles.size(); t++)
+	{
+		for (int v = 0; v < 3; v++)
+		{
+			CVector v1 = *triangles[t].m_vertexNormals[v];
+			CVector v2 = triangles[t].m_faceNormal;
+			GLfloat dot = v1.m_x * v2.m_x + v1.m_y * v2.m_y + v1.m_z * v2.m_z;
+			GLfloat lenSq1 = v1.m_x*v1.m_x + v1.m_y*v1.m_y + v1.m_z * v1.m_z;
+			GLfloat lenSq2 = v2.m_x*v2.m_x + v2.m_y*v2.m_y + v2.m_z * v2.m_z;
+			GLfloat angle = acos(dot / sqrt(lenSq1 * lenSq2));
+
+			if (angle >= limit)
+			{
+				triangles[t].m_vertexNormals[v]->m_x -= triangles[t].m_faceNormal.m_x;
+				triangles[t].m_vertexNormals[v]->m_y -= triangles[t].m_faceNormal.m_y;
+				triangles[t].m_vertexNormals[v]->m_z -= triangles[t].m_faceNormal.m_z;
+				triangles[t].m_vertexNormals[v] = &triangles[t].m_faceNormal;
+			}
+		}
+	}
+}
+
+void normalizeVertices(map<string, CVector>& vertices)
+{
+	cout << "Normalizing vertices" << endl;
+	for (auto it = vertices.begin(); it != vertices.end(); it++)
 	{
 		CVector *vertex = &it->second;
 		GLfloat w = sqrt(vertex->m_x * vertex->m_x + vertex->m_y * vertex->m_y + vertex->m_z * vertex->m_z);
@@ -463,7 +498,9 @@ int main(int argc, char** argv)
 
 	read_stl(".\\Upper.stl", allTriangles, vertices);
 	read_stl(".\\Lower.stl", allTriangles, vertices);
-	calc_vertexNormals(allTriangles, vertices);
+	calcVertices(allTriangles, vertices);
+	smoothEdges(allTriangles, vertices);
+	normalizeVertices(vertices);
 
 	glutMainLoop(); // enter in a loop
 }
