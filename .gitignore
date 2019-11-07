@@ -16,3 +16,7 @@ ViewSTL/.vs/ViewSTL/v15/.suo
 *.tlog
 *.obj
 *.lastbuildstate
+*.exe
+*.log
+*.pdb
+*.obj
