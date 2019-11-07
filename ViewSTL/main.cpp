@@ -10,7 +10,6 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
-#include <vector>
 #include <math.h>
 #include <GL/glut.h>
 #include <GL/glu.h>
@@ -105,6 +104,15 @@ public:
 
 	vector<CTriangle *> m_Triangles;
 };
+
+
+enum
+{
+	HEATMAP = 0,
+	NUM_DEBUG_MODES,
+};
+
+bool debugModes[NUM_DEBUG_MODES] = { false };
 
 // Nothing special here, so I won't waste your bandwidth with the implementations. Note that we won't store the triangle's normal, so we don't need to read that from the STL file.
 // 
@@ -278,6 +286,29 @@ void setProjectionMatrix(int width, int height, double zoomFactor)
 	gluPerspective(20.0*zoomFactor, (float)width / (float)height, zNear, zFar);
 }
 
+void setMaterialForHeatmap(int neighbours)
+{
+	float color_green[] = { 0.0f, 1.0f, 0.0f, 1.0f };
+	float color_yellow[] = { 1.0f, 1.0f, 0.0f, 1.0f };
+	float color_red[] = { 1.0f, 0.0f, 0.0f, 1.0f };
+	if (neighbours >= 6)
+	{
+		glMaterialfv(GL_FRONT, GL_DIFFUSE, color_red);
+	}
+	else if (neighbours >= 5)
+	{
+		glMaterialfv(GL_FRONT, GL_DIFFUSE, color_yellow);
+	}
+	else if (neighbours >= 4)
+	{
+		glMaterialfv(GL_FRONT, GL_DIFFUSE, color_green);
+	}
+	else
+	{
+		glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+	}
+}
+
 void renderScene() // this function is called when you need to redraw the scene 
 {
 	GLenum err;
@@ -312,13 +343,22 @@ void renderScene() // this function is called when you need to redraw the scene
 	
 	for (size_t i = 0; i < allTriangles.size(); i++)
 	{
-		glNormal3f(allTriangles[i]->m_vertexNormals[0].m_x, allTriangles[i]->m_vertexNormals[0].m_y, allTriangles[i]->m_vertexNormals[0].m_z);
-		glVertex3f(allTriangles[i]->m_p[0].m_x, allTriangles[i]->m_p[0].m_y, allTriangles[i]->m_p[0].m_z);
-		glNormal3f(allTriangles[i]->m_vertexNormals[1].m_x, allTriangles[i]->m_vertexNormals[1].m_y, allTriangles[i]->m_vertexNormals[1].m_z);
-		glVertex3f(allTriangles[i]->m_p[1].m_x, allTriangles[i]->m_p[1].m_y, allTriangles[i]->m_p[1].m_z);
-		glNormal3f(allTriangles[i]->m_vertexNormals[2].m_x, allTriangles[i]->m_vertexNormals[2].m_y, allTriangles[i]->m_vertexNormals[2].m_z);
-		glVertex3f(allTriangles[i]->m_p[2].m_x, allTriangles[i]->m_p[2].m_y, allTriangles[i]->m_p[2].m_z);
+		for(int j = 0; j < 3; j++)
+		{
+			CTriangle *pTriangle = allTriangles[i];
+
+
+			if(debugModes[HEATMAP])
+			{
+				int neighbours = pTriangle->m_vertices[j]->m_Triangles.size();
+				setMaterialForHeatmap(neighbours);
+			}
+
+			glNormal3f(pTriangle->m_vertexNormals[j].m_x, pTriangle->m_vertexNormals[j].m_y, pTriangle->m_vertexNormals[j].m_z);
+			glVertex3f(pTriangle->m_p[j].m_x, pTriangle->m_p[j].m_y, pTriangle->m_p[j].m_z);
+		}
 	}
+
 	glEnd();
 
 	//glDisable(GL_COLOR_MATERIAL);
@@ -336,8 +376,6 @@ void renderScene() // this function is called when you need to redraw the scene
 		cout << "GL ERROR: " << err << endl;
 	}
 }
-
-
 
 // this function is called when the window is resized
 void reshapeScene(int w, int h)
@@ -393,6 +431,28 @@ void reshapeScene(int w, int h)
 // 
 // 	glMatrixMode(GL_MODELVIEW); // and revert again
 // }
+
+void setDebugMode(int mode, bool value)
+{
+	debugModes[mode] = value;
+	renderScene();
+}
+
+void toggleDebugMode(int mode)
+{
+	setDebugMode(mode, !debugModes[mode]);
+}
+
+void keyboard(unsigned char key, int x, int y)
+{
+	switch (key)
+	{
+	case 'x': 
+		toggleDebugMode(HEATMAP);
+		break;
+	default: ;
+	}
+}
 
 void mouse(int button, int state, int x, int y)
 {
@@ -505,6 +565,7 @@ int main(int argc, char** argv)
 
 	//glutMouseFunc(mouseHandler);
 	glutMouseFunc(mouse);
+	glutKeyboardFunc(keyboard);
 	glutMotionFunc(motion);
 	init(); // init
 
