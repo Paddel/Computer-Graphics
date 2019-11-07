@@ -2,3 +2,12 @@
 *.opendb
 *.db
 ViewSTL/.vs/ViewSTL/v15/.suo
+*.obj
+*.ipch
+*.idb
+*.pdb
+*.tlog
+*.log
+*.exe
+*.iobj
+*.lastbuildstate
