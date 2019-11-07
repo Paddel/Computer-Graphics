@@ -1,0 +1,5 @@
+ecken mit vielen nachbarn
+dreieck- & ecknormalen
+dreicke am limit
+wireframe
+gouraud & flat

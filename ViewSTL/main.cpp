@@ -3,17 +3,22 @@
 // und http://users.polytech.unice.fr/~buffa/cours/synthese_image/DOCS/Tutoriaux/Nehe/opengl.htm
 // und https://www.opengl.org/archives/resources/code/samples/glut_examples/examples/highlight.c
 
+#define _USE_MATH_DEFINES
+
 #include <map>
 #include <cmath>
+#include <vector>
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <math.h>
 #include <GL/glut.h>
 #include <GL/glu.h>
 #include <GL/gl.h>
 
 using namespace std;
 
+class CVertex;
 
 class CVector
 {
@@ -39,21 +44,6 @@ public:
 	}
 
 	GLfloat m_x, m_y, m_z;
-
-	bool operator< (const CVector& Other) const
-	{
-		return m_x < Other.m_x;
-	}
-
-	bool operator> (const CVector& Other) const
-	{
-		return m_x > Other.m_x;
-	}
-
-	bool operator== (const CVector& Other) const
-	{
-		return m_x == Other.m_x && m_y == Other.m_y && m_z == Other.m_z;
-	}
 };
 
 //Notice the constructor v3(char* bin); This constructor will help us create an instance of v3 from binary data 
@@ -102,68 +92,73 @@ public:
 	}
 
 	CVector m_p[3], m_faceNormal;
-	CVector *m_vertexNormals[3];
-
+	CVertex *m_vertices[3];
+	CVector m_vertexNormals[3];
 
 };
+
+class CVertex
+{
+public:
+	CVertex() {};
+	CVertex(CTriangle *pFirst) { m_Triangles.push_back(pFirst); };
+
+	vector<CTriangle *> m_Triangles;
+};
+
 // Nothing special here, so I won't waste your bandwidth with the implementations. Note that we won't store the triangle's normal, so we don't need to read that from the STL file.
 // 
 // Reading the STL File
 // Once we understand the STL file format, and have a vector class which can handle most of the binary data reading, it's not much work to put together a function to read a whole STL file. Here, we'll read an STL file into a std::vector of tri's
 
-void calc_vertexNormals(vector <CTriangle>&triangles, map<CVector, CVector>& vertices)
+void calcVertices(vector <CTriangle *>&triangles)
 {
 	cout << "Calculating vertex normals for " << triangles.size() << " triangles" << endl;
+	const GLfloat limit = (float)(M_PI / 180.0 * 70.0);
 
 	for (int t = 0; t < triangles.size(); t++)
 	{
 		for (int v = 0; v < 3; v++)
 		{
-			triangles[t].m_vertexNormals[v]->m_x += triangles[t].m_faceNormal.m_x;
-			triangles[t].m_vertexNormals[v]->m_y += triangles[t].m_faceNormal.m_y;
-			triangles[t].m_vertexNormals[v]->m_z += triangles[t].m_faceNormal.m_z;
+			for (int j = 0; j < triangles[t]->m_vertices[v]->m_Triangles.size(); j++)
+			{
+				CTriangle *pAdjacentTriangle = triangles[t]->m_vertices[v]->m_Triangles[j];
+
+				CVector v1 = triangles[t]->m_faceNormal;
+				CVector v2 = pAdjacentTriangle->m_faceNormal;
+				GLfloat dot = v1.m_x * v2.m_x + v1.m_y * v2.m_y + v1.m_z * v2.m_z;
+				GLfloat lenSq1 = v1.m_x*v1.m_x + v1.m_y*v1.m_y + v1.m_z * v1.m_z;
+				GLfloat lenSq2 = v2.m_x*v2.m_x + v2.m_y*v2.m_y + v2.m_z * v2.m_z;
+				GLfloat angle = acos(dot / sqrt(lenSq1 * lenSq2));
+				
+				if (angle < limit)
+				{
+					triangles[t]->m_vertexNormals[v].m_y += pAdjacentTriangle->m_faceNormal.m_y;
+					triangles[t]->m_vertexNormals[v].m_x += pAdjacentTriangle->m_faceNormal.m_x;
+					triangles[t]->m_vertexNormals[v].m_z += pAdjacentTriangle->m_faceNormal.m_z;
+				}
+			}
 		}
 	}
-
-	for(auto it = vertices.begin(); it != vertices.end(); it++)
-	{
-		CVector *vertex = &it->second;
-		GLfloat w = sqrt(vertex->m_x * vertex->m_x + vertex->m_y * vertex->m_y + vertex->m_z * vertex->m_z);
-		vertex->m_x /= w;
-		vertex->m_y /= w;
-		vertex->m_z /= w;
-	}
-
-	//for (int ta = 0; ta < triangles.size(); ta++)
-	//{
-	//	if(ta % 100 == 0)
-	//	cout << "Triangle " << ta << "/" << triangles.size() << "=" << ta/(float)triangles.size() << endl;
-	//	for (int va = 0; va < 3; va++)
-	//	{
-	//		for (int tb = 0; tb < triangles.size(); tb++)
-	//		{
-	//			for (int vb = 0; vb < 3; vb++)
-	//			{
-	//				if (memcmp(&triangles[ta].m_p[va], &triangles[tb].m_p[vb], sizeof(CVector)) == 0)
-	//				{
-	//					//cout << "Identical Vertex found: Triangle " << ta << " vertex " << va << " & Triangle " << tb << " vertex " << vb << endl;
-	//					triangles[ta].m_vertexNormals[va].m_x += triangles[tb].m_faceNormal.m_x;
-	//					triangles[ta].m_vertexNormals[va].m_y += triangles[tb].m_faceNormal.m_y;
-	//					triangles[ta].m_vertexNormals[va].m_z += triangles[tb].m_faceNormal.m_z;
-	//				}
-	//			}
-	//		}
-
-	//		//normalisieren
-	//		float w = sqrt(triangles[ta].m_vertexNormals[va].m_x * triangles[ta].m_vertexNormals[va].m_x + triangles[ta].m_vertexNormals[va].m_y * triangles[ta].m_vertexNormals[va].m_y + triangles[ta].m_vertexNormals[va].m_z * triangles[ta].m_vertexNormals[va].m_z);
-	//		triangles[ta].m_vertexNormals[va].m_x /= w;
-	//		triangles[ta].m_vertexNormals[va].m_y /= w;
-	//		triangles[ta].m_vertexNormals[va].m_z /= w;
-	//	}
-	//}
 }
 
-void read_stl(string fname, vector <CTriangle>&v, map<CVector, CVector>& vertices) {
+void normalizeVertices(vector <CTriangle *>&triangles)
+{
+	cout << "Normalizing vertices" << endl;
+	for (int t = 0; t < triangles.size(); t++)
+	{
+		for (int v = 0; v < 3; v++)
+		{
+			CVector *vertex = &triangles[t]->m_vertexNormals[v];
+			GLfloat w = sqrt(vertex->m_x * vertex->m_x + vertex->m_y * vertex->m_y + vertex->m_z * vertex->m_z);
+			vertex->m_x /= w;
+			vertex->m_y /= w;
+			vertex->m_z /= w;
+		}
+	}
+}
+
+void read_stl(string fname, vector <CTriangle *>&v, map<string, CVertex *>& vertices) {
 
 	//!!
 	//don't forget ios::binary
@@ -216,31 +211,33 @@ void read_stl(string fname, vector <CTriangle>&v, map<CVector, CVector>& vertice
 			CVector p3(facet + VECTOR_BINARY_LEN * 3);
 
 			//add a new triangle to the array
-			CTriangle triangle(p1, p2, p3, normal);
-
-			char *tmpFace = nullptr;
-			for (int i = 0; i < 3; i++)
+			CTriangle *pTriangle = new CTriangle(p1, p2, p3, normal);
+		
+			for (int v = 0; v < 3; v++)
 			{
-				CVector p = i == 0 ? p1 : (i == 1 ? p2 : p3);
-				tmpFace = new char[VECTOR_BINARY_LEN];
-				memcpy(tmpFace, facet + VECTOR_BINARY_LEN * i, sizeof(char) * VECTOR_BINARY_LEN);
+				CVector p = v == 0 ? p1 : (v == 1 ? p2 : p3);
+				char vecStr[128];
+				sprintf_s(vecStr, sizeof(vecStr), "%f:%f:%f", p.m_x, p.m_y, p.m_z);
 
-				/*map<CVector, CVector>::iterator it = vertices.find(p);
-				if (it == vertices.end())*/
-				map<CVector, CVector>::iterator it = vertices.insert(make_pair(p, CVector())).first;
-				triangle.m_vertexNormals[i] = &it->second;
+				map<string, CVertex *>::iterator it = vertices.find(vecStr);
+				if (it != vertices.end())
+					it->second->m_Triangles.push_back(pTriangle);
+				else
+					it = vertices.insert(make_pair(vecStr, new CVertex(pTriangle))).first;
+
+				pTriangle->m_vertices[v] = it->second;
 			}
 
-			v.push_back(triangle);
+			v.push_back(pTriangle);
 		}
 	}
-
+	
 	return;
 
 }
 
 // hier haben wir alle unsere Dreiecke reinkopiert:
-vector <CTriangle> allTriangles;
+vector <CTriangle *> allTriangles;
 
 
 #if 1
@@ -315,12 +312,12 @@ void renderScene() // this function is called when you need to redraw the scene
 	
 	for (size_t i = 0; i < allTriangles.size(); i++)
 	{
-		glNormal3f(allTriangles[i].m_vertexNormals[0]->m_x, allTriangles[i].m_vertexNormals[0]->m_y, allTriangles[i].m_vertexNormals[0]->m_z);
-		glVertex3f(allTriangles[i].m_p[0].m_x, allTriangles[i].m_p[0].m_y, allTriangles[i].m_p[0].m_z);
-		glNormal3f(allTriangles[i].m_vertexNormals[1]->m_x, allTriangles[i].m_vertexNormals[1]->m_y, allTriangles[i].m_vertexNormals[1]->m_z);
-		glVertex3f(allTriangles[i].m_p[1].m_x, allTriangles[i].m_p[1].m_y, allTriangles[i].m_p[1].m_z);
-		glNormal3f(allTriangles[i].m_vertexNormals[2]->m_x, allTriangles[i].m_vertexNormals[2]->m_y, allTriangles[i].m_vertexNormals[2]->m_z);
-		glVertex3f(allTriangles[i].m_p[2].m_x, allTriangles[i].m_p[2].m_y, allTriangles[i].m_p[2].m_z);
+		glNormal3f(allTriangles[i]->m_vertexNormals[0].m_x, allTriangles[i]->m_vertexNormals[0].m_y, allTriangles[i]->m_vertexNormals[0].m_z);
+		glVertex3f(allTriangles[i]->m_p[0].m_x, allTriangles[i]->m_p[0].m_y, allTriangles[i]->m_p[0].m_z);
+		glNormal3f(allTriangles[i]->m_vertexNormals[1].m_x, allTriangles[i]->m_vertexNormals[1].m_y, allTriangles[i]->m_vertexNormals[1].m_z);
+		glVertex3f(allTriangles[i]->m_p[1].m_x, allTriangles[i]->m_p[1].m_y, allTriangles[i]->m_p[1].m_z);
+		glNormal3f(allTriangles[i]->m_vertexNormals[2].m_x, allTriangles[i]->m_vertexNormals[2].m_y, allTriangles[i]->m_vertexNormals[2].m_z);
+		glVertex3f(allTriangles[i]->m_p[2].m_x, allTriangles[i]->m_p[2].m_y, allTriangles[i]->m_p[2].m_z);
 	}
 	glEnd();
 
@@ -399,6 +396,13 @@ void reshapeScene(int w, int h)
 
 void mouse(int button, int state, int x, int y)
 {
+	if (button == 1 && state == 0)
+	{
+		static bool x = true;
+		glPolygonMode(GL_FRONT_AND_BACK, x ? GL_LINE : GL_FILL);
+		x ^= 1;
+	}
+
 	const float deltaWheel = 1.0;
 	if (button == 3) // wheel 
 	{
@@ -504,12 +508,13 @@ int main(int argc, char** argv)
 	glutMotionFunc(motion);
 	init(); // init
 
-	map<CVector, CVector> vertices;
+	map<string, CVertex *> vertices;
 
 
 	read_stl(".\\Upper.stl", allTriangles, vertices);
 	read_stl(".\\Lower.stl", allTriangles, vertices);
-	calc_vertexNormals(allTriangles, vertices);
+	calcVertices(allTriangles);
+	normalizeVertices(allTriangles);
 
 	glutMainLoop(); // enter in a loop
 }
