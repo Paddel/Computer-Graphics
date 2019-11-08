@@ -38,6 +38,7 @@ public:
 	{
 
 	}
+
 	~CVector()
 	{
 	}
@@ -50,7 +51,6 @@ public:
 
 CVector::CVector(char* facet)
 {
-
 	char f1[4] = { facet[0],
 		facet[1],facet[2],facet[3] };
 
@@ -67,7 +67,6 @@ CVector::CVector(char* facet)
 	m_x = xx;
 	m_y = yy;
 	m_z = zz;
-
 }
 
 //We assume that char* facet is really a pointer to a contiguous block of at least nine single precision floats.We then cast the binary data 4 bytes at a time.Note that since our v3 class uses double precision, we must cast the single precision values found in the STL file to double precision.Also, it's not necessary to copy the binary data into three separate char arrays. The first line of the method could have been simply:
@@ -77,8 +76,6 @@ CVector::CVector(char* facet)
 class CTriangle
 {
 public:
-
-	CTriangle();
 	CTriangle(const CVector& p1, const CVector& p2, const CVector& p3, const CVector& normal):
 		m_faceNormal(normal)
 	{
@@ -93,18 +90,16 @@ public:
 	CVector m_p[3], m_faceNormal;
 	CVertex *m_vertices[3];
 	CVector m_vertexNormals[3];
-
 };
 
 class CVertex
 {
 public:
 	CVertex() {};
-	CVertex(CTriangle *pFirst) { m_Triangles.push_back(pFirst); };
+	CVertex(CTriangle *pFirst) { m_adjacentTriangles.push_back(pFirst); };
 
-	vector<CTriangle *> m_Triangles;
+	vector<CTriangle *> m_adjacentTriangles;
 };
-
 
 enum
 {
@@ -118,12 +113,7 @@ enum
 
 bool renderModes[NUM_RENDERMODES] = { false };
 
-// Nothing special here, so I won't waste your bandwidth with the implementations. Note that we won't store the triangle's normal, so we don't need to read that from the STL file.
-// 
-// Reading the STL File
-// Once we understand the STL file format, and have a vector class which can handle most of the binary data reading, it's not much work to put together a function to read a whole STL file. Here, we'll read an STL file into a std::vector of tri's
-
-void calcVertices(vector <CTriangle *>&triangles)
+void calcVertexNormals(vector <CTriangle *>&triangles)
 {
 	cout << "Calculating vertex normals for " << triangles.size() << " triangles" << endl;
 	const GLfloat limit = (float)(M_PI / 180.0 * 70.0);
@@ -132,9 +122,9 @@ void calcVertices(vector <CTriangle *>&triangles)
 	{
 		for (int v = 0; v < 3; v++)
 		{
-			for (int j = 0; j < triangles[t]->m_vertices[v]->m_Triangles.size(); j++)
+			for (int j = 0; j < triangles[t]->m_vertices[v]->m_adjacentTriangles.size(); j++)
 			{
-				CTriangle *pAdjacentTriangle = triangles[t]->m_vertices[v]->m_Triangles[j];
+				CTriangle *pAdjacentTriangle = triangles[t]->m_vertices[v]->m_adjacentTriangles[j];
 
 				CVector v1 = triangles[t]->m_faceNormal;
 				CVector v2 = pAdjacentTriangle->m_faceNormal;
@@ -170,20 +160,17 @@ void normalizeVertices(vector <CTriangle *>&triangles)
 	}
 }
 
-void read_stl(string fname, vector <CTriangle *>&v, map<string, CVertex *>& vertices) {
-
-	//!!
-	//don't forget ios::binary
-	//!!
-	ifstream myFile(
-		fname.c_str(), ios::in | ios::binary);
+void read_stl(string fname, vector <CTriangle *>&v, map<string, CVertex *>& vertices)
+{
+	ifstream myFile(fname.c_str(), ios::in | ios::binary);
 
 	char header_info[80] = "";
 	char nTri[4];
 	unsigned long nTriLong;
 
 	//read 80 byte header
-	if (myFile) {
+	if (myFile) 
+	{
 		myFile.read(header_info, 80);
 		cout << "header: " << header_info << endl;
 	}
@@ -192,7 +179,8 @@ void read_stl(string fname, vector <CTriangle *>&v, map<string, CVertex *>& vert
 	}
 
 	//read 4-byte ulong
-	if (myFile) {
+	if (myFile)
+	{
 		myFile.read(nTri, 4);
 		nTriLong = *((unsigned long*)nTri);
 		cout << "n Tri: " << nTriLong << endl;
@@ -233,7 +221,7 @@ void read_stl(string fname, vector <CTriangle *>&v, map<string, CVertex *>& vert
 
 				map<string, CVertex *>::iterator it = vertices.find(vecStr);
 				if (it != vertices.end())
-					it->second->m_Triangles.push_back(pTriangle);
+					it->second->m_adjacentTriangles.push_back(pTriangle);
 				else
 					it = vertices.insert(make_pair(vecStr, new CVertex(pTriangle))).first;
 
@@ -243,16 +231,11 @@ void read_stl(string fname, vector <CTriangle *>&v, map<string, CVertex *>& vert
 			v.push_back(pTriangle);
 		}
 	}
-	
-	return;
-
 }
 
 // hier haben wir alle unsere Dreiecke reinkopiert:
 vector <CTriangle *> allTriangles;
 
-
-#if 1
 GLfloat gWidth = 1000.0f;
 GLfloat gHeight = 800.0f;
 GLfloat zNear = 0.01f;
@@ -280,7 +263,6 @@ double zoomFactor = 1.0;
 const double zoomFactorDelta = 0.01;
 const double zoomFactorMax = 30.0;
 const double zoomFactorMin = 0.1;
-//float invViewMatrix[12];
 // -----------------------------------------for navigation 
 
 void setProjectionMatrix(int width, int height, double zoomFactor)
@@ -314,46 +296,26 @@ void setMaterialForHeatmap(int neighbours)
 	}
 }
 
-void renderScene() // this function is called when you need to redraw the scene 
+void drawModel()
 {
-	GLenum err;
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the scene
 
-	setProjectionMatrix((int)gWidth, (int)gHeight, zoomFactor);
+	glColorMaterial(GL_FRONT, GL_AMBIENT);
+	glColorMaterial(GL_FRONT, GL_DIFFUSE);
+	glColorMaterial(GL_FRONT, GL_SPECULAR);
 
+	glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
 
-	// navigation ---------------------------------------------------
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();	
+	glBegin(GL_TRIANGLES);
 
-	// set the observer 
-	// he's in position in (0,0,-10)
-	// he's looking on (0,0,0)
-	// he's in (0,1,0) direction
-	gluLookAt(0, -60.0, 0, 0, 0, 0, 0, 0, 1.0);
-
-	glRotatef(viewRotation[0], 1.0, 0.0, 0.0);
-	glRotatef(viewRotation[2], 0.0, 0.0, 1.0);
-
- 	glColorMaterial(GL_FRONT, GL_AMBIENT);
- 	glColorMaterial(GL_FRONT, GL_DIFFUSE);
- 	glColorMaterial(GL_FRONT, GL_SPECULAR);
- 
-  	glMaterialfv(GL_FRONT, GL_AMBIENT , mat_ambient);
- 	glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
-
-	glBegin( GL_TRIANGLES );
-	
 	for (size_t i = 0; i < allTriangles.size(); i++)
 	{
 		CTriangle *pTriangle = allTriangles[i];
-		for(int j = 0; j < 3; j++)
+		for (int j = 0; j < 3; j++)
 		{
-
-
-			if(renderModes[RENDERMODE_HEATMAP])
+			if (renderModes[RENDERMODE_HEATMAP])
 			{
-				int neighbours = (int)pTriangle->m_vertices[j]->m_Triangles.size();
+				int neighbours = (int)pTriangle->m_vertices[j]->m_adjacentTriangles.size();
 				setMaterialForHeatmap(neighbours);
 			}
 
@@ -367,8 +329,12 @@ void renderScene() // this function is called when you need to redraw the scene
 	}
 
 	glEnd();
+}
 
+const int markerLength = 1.0;
 
+void drawFaceNormals()
+{
 	if (renderModes[RENDERMODE_FACENORMALS])
 	{
 		const float color_white[] = { 1.0, 1.0, 1.0, 1.0 };
@@ -378,8 +344,6 @@ void renderScene() // this function is called when you need to redraw the scene
 		for (size_t i = 0; i < allTriangles.size(); i++)
 		{
 			CTriangle *pTriangle = allTriangles[i];
-
-			const int markerLength = 1;
 			CVector start;
 			CVector end;
 
@@ -397,21 +361,21 @@ void renderScene() // this function is called when you need to redraw the scene
 
 		glEnd();
 	}
-	
-	if(renderModes[RENDERMODE_VERTEXNORMALS])
+}
+
+void drawVertexNormals()
+{
+	if (renderModes[RENDERMODE_VERTEXNORMALS])
 	{
 		const float color_black[] = { 0.0, 0.0, 0.0, 0.0 };
 
 		glBegin(GL_LINES);
 		glMaterialfv(GL_FRONT, GL_AMBIENT, color_black);
-
 		for (size_t i = 0; i < allTriangles.size(); i++)
 		{
 			CTriangle *pTriangle = allTriangles[i];
-
 			for (int v = 0; v < 3; v++)
 			{
-				const int markerLength = 1;
 				CVector start;
 				CVector end;
 
@@ -426,21 +390,41 @@ void renderScene() // this function is called when you need to redraw the scene
 				glVertex3f(start.m_x, start.m_y, start.m_z);
 				glVertex3f(end.m_x, end.m_y, end.m_z);
 			}
-
 		}
 		glEnd();
 	}
+}
 
+void setObserver()
+{	
+	// set the observer 
+	// he's in position in (0,0,-10)
+	// he's looking on (0,0,0)
+	// he's in (0,1,0) direction
+	gluLookAt(0, -60.0, 0, 0, 0, 0, 0, 0, 1.0);
 
-	//glDisable(GL_COLOR_MATERIAL);
+	glRotatef(viewRotation[0], 1.0, 0.0, 0.0);
+	glRotatef(viewRotation[2], 0.0, 0.0, 1.0);	
+}
 
+void renderScene() // this function is called when you need to redraw the scene 
+{
+	GLenum err;
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the scene
+
+	setProjectionMatrix((int)gWidth, (int)gHeight, zoomFactor);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();	
+
+	setObserver();
+
+	drawModel();
+	drawFaceNormals();
+	drawVertexNormals();
+	
 	glFlush();
-
-	// -------------------------------------------------------------------------------------------------------
-
-	// swap the buffer on the screen (real draw)
 	glutSwapBuffers();
-
 
 	while ((err = glGetError()) != GL_NO_ERROR)
 	{
@@ -464,44 +448,6 @@ void reshapeScene(int w, int h)
 	gWidth = (GLfloat)w;
 	gHeight = (GLfloat)h;
 }
-
-// void selectObject(int x, int y)
-// {
-// 	GLuint buff[64] = { 0 }; // the buffer
-// 	GLint hits, view[4];
-// 
-// 	glSelectBuffer(64, buff); // This choose the buffer where store the values for the selection data
-// 	glGetIntegerv(GL_VIEWPORT, view); // This retrieve info about the viewport
-// 	glRenderMode(GL_SELECT); // Switching in selecton mode
-// 	glInitNames(); // This stack contains all the info about the objects
-// 	glPushName(0); // Now fill the stack with one element (or glLoadName will generate an error)
-// 
-// 	// Now modify the vieving volume, restricting selection area around the cursor
-// 	glMatrixMode(GL_PROJECTION);
-// 	glPushMatrix();
-// 
-// 	glLoadIdentity();
-// 	gluPickMatrix(x, y, 1.0, 1.0, view); // restrict the draw to an area around the cursor
-// 
-// 	// [IMPORTANT] apply the same perspective in the reshapeFunc
-// 	gluPerspective(20, view[2] * 1.0f / view[3], 0.1f, 100);
-// 	glMatrixMode(GL_MODELVIEW); // Draw the objects onto the screen
-// 
-// 	glutSwapBuffers(); // draw only the names in the stack, and fill the array
-// 	renderScene(); // render
-// 
-// 	glMatrixMode(GL_PROJECTION); // Do you remember? We do pushMatrix in PROJECTION mode
-// 	glPopMatrix();
-// 
-// 	hits = glRenderMode(GL_RENDER); // get number of objects drawed in that area and return to render mode
-// 
-// 	// NOW 
-// 	// hits: number of hits
-// 	// buff[ (hits*x)+3] the ID
-// 	std::cout << "Hits: " << hits << "\n" << "ID: " << buff[3] << "\n";
-// 
-// 	glMatrixMode(GL_MODELVIEW); // and revert again
-// }
 
 void setRenderMode(int mode, bool value)
 {
@@ -628,8 +574,6 @@ void init() // called to glEnable features or to init display lists
 	glShadeModel(GL_SMOOTH);
 }
 
-#endif
-
 int main(int argc, char** argv)
 {
 	glutInit(&argc, argv); // init OpenGL
@@ -638,23 +582,20 @@ int main(int argc, char** argv)
 	glutInitWindowPosition(100, 100);               // window location
 	int handle = glutCreateWindow("ViewSTL"); // set the window title
 
-	// glutMotionFunc(glutMotion);        // called when the mouse moves over the screen with one of this button pressed
 	glutReshapeFunc(reshapeScene); // set the callback to reshape
 	glutDisplayFunc(renderScene); // set the callback to render
 
-	//glutMouseFunc(mouseHandler);
 	glutMouseFunc(mouse);
 	glutKeyboardFunc(keyboard);
 	glutMotionFunc(motion);
-	init(); // init
+	init();
 
 	map<string, CVertex *> vertices;
 
-
 	read_stl(".\\Upper.stl", allTriangles, vertices);
 	read_stl(".\\Lower.stl", allTriangles, vertices);
-	calcVertices(allTriangles);
+	calcVertexNormals(allTriangles);
 	normalizeVertices(allTriangles);
 
-	glutMainLoop(); // enter in a loop
+	glutMainLoop();
 }
