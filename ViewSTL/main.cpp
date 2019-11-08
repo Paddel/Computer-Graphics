@@ -108,11 +108,15 @@ public:
 
 enum
 {
-	HEATMAP = 0,
-	NUM_DEBUG_MODES,
+	RENDERMODE_HEATMAP = 0,
+	RENDERMODE_WIREFRAME,
+	RENDERMODE_SHADING,
+	RENDERMODE_FACENORMALS,
+	RENDERMODE_VERTEXNORMALS,
+	NUM_RENDERMODES,
 };
 
-bool debugModes[NUM_DEBUG_MODES] = { false };
+bool renderModes[NUM_RENDERMODES] = { false };
 
 // Nothing special here, so I won't waste your bandwidth with the implementations. Note that we won't store the triangle's normal, so we don't need to read that from the STL file.
 // 
@@ -291,6 +295,7 @@ void setMaterialForHeatmap(int neighbours)
 	float color_green[] = { 0.0f, 1.0f, 0.0f, 1.0f };
 	float color_yellow[] = { 1.0f, 1.0f, 0.0f, 1.0f };
 	float color_red[] = { 1.0f, 0.0f, 0.0f, 1.0f };
+
 	if (neighbours >= 6)
 	{
 		glMaterialfv(GL_FRONT, GL_DIFFUSE, color_red);
@@ -330,8 +335,6 @@ void renderScene() // this function is called when you need to redraw the scene
 	glRotatef(viewRotation[0], 1.0, 0.0, 0.0);
 	glRotatef(viewRotation[2], 0.0, 0.0, 1.0);
 
-	// NOW HERE YOU CAN DRAW WHAT YOU WANT! :) --------------------------------------------------------------
-
  	glColorMaterial(GL_FRONT, GL_AMBIENT);
  	glColorMaterial(GL_FRONT, GL_DIFFUSE);
  	glColorMaterial(GL_FRONT, GL_SPECULAR);
@@ -343,23 +346,91 @@ void renderScene() // this function is called when you need to redraw the scene
 	
 	for (size_t i = 0; i < allTriangles.size(); i++)
 	{
+		CTriangle *pTriangle = allTriangles[i];
 		for(int j = 0; j < 3; j++)
 		{
-			CTriangle *pTriangle = allTriangles[i];
 
 
-			if(debugModes[HEATMAP])
+			if(renderModes[RENDERMODE_HEATMAP])
 			{
-				int neighbours = pTriangle->m_vertices[j]->m_Triangles.size();
+				int neighbours = (int)pTriangle->m_vertices[j]->m_Triangles.size();
 				setMaterialForHeatmap(neighbours);
 			}
 
-			glNormal3f(pTriangle->m_vertexNormals[j].m_x, pTriangle->m_vertexNormals[j].m_y, pTriangle->m_vertexNormals[j].m_z);
+			if (renderModes[RENDERMODE_SHADING])
+				glNormal3f(pTriangle->m_faceNormal.m_x, pTriangle->m_faceNormal.m_y, pTriangle->m_faceNormal.m_z);
+			else
+				glNormal3f(pTriangle->m_vertexNormals[j].m_x, pTriangle->m_vertexNormals[j].m_y, pTriangle->m_vertexNormals[j].m_z);
+
 			glVertex3f(pTriangle->m_p[j].m_x, pTriangle->m_p[j].m_y, pTriangle->m_p[j].m_z);
 		}
 	}
 
 	glEnd();
+
+
+	if (renderModes[RENDERMODE_FACENORMALS])
+	{
+		const float color_white[] = { 1.0, 1.0, 1.0, 1.0 };
+
+		glBegin(GL_LINES);
+		glMaterialfv(GL_FRONT, GL_AMBIENT, color_white);
+		for (size_t i = 0; i < allTriangles.size(); i++)
+		{
+			CTriangle *pTriangle = allTriangles[i];
+
+			const int markerLength = 1;
+			CVector start;
+			CVector end;
+
+			start.m_x = (pTriangle->m_p[0].m_x + pTriangle->m_p[1].m_x + pTriangle->m_p[2].m_x) / 3;
+			start.m_y = (pTriangle->m_p[0].m_y + pTriangle->m_p[1].m_y + pTriangle->m_p[2].m_y) / 3;
+			start.m_z = (pTriangle->m_p[0].m_z + pTriangle->m_p[1].m_z + pTriangle->m_p[2].m_z) / 3;
+
+			end.m_x = start.m_x + pTriangle->m_faceNormal.m_x * markerLength;
+			end.m_y = start.m_y + pTriangle->m_faceNormal.m_y * markerLength;
+			end.m_z = start.m_z + pTriangle->m_faceNormal.m_z * markerLength;
+
+			glVertex3f(start.m_x, start.m_y, start.m_z);
+			glVertex3f(end.m_x, end.m_y, end.m_z);
+		}
+
+		glEnd();
+	}
+	
+	if(renderModes[RENDERMODE_VERTEXNORMALS])
+	{
+		const float color_black[] = { 0.0, 0.0, 0.0, 0.0 };
+
+		glBegin(GL_LINES);
+		glMaterialfv(GL_FRONT, GL_AMBIENT, color_black);
+
+		for (size_t i = 0; i < allTriangles.size(); i++)
+		{
+			CTriangle *pTriangle = allTriangles[i];
+
+			for (int v = 0; v < 3; v++)
+			{
+				const int markerLength = 1;
+				CVector start;
+				CVector end;
+
+				start.m_x = pTriangle->m_p[v].m_x;
+				start.m_y = pTriangle->m_p[v].m_y;
+				start.m_z = pTriangle->m_p[v].m_z;
+
+				end.m_x = pTriangle->m_p[v].m_x + pTriangle->m_vertexNormals[v].m_x * markerLength;
+				end.m_y = pTriangle->m_p[v].m_y + pTriangle->m_vertexNormals[v].m_y * markerLength;
+				end.m_z = pTriangle->m_p[v].m_z + pTriangle->m_vertexNormals[v].m_z * markerLength;
+
+				glVertex3f(start.m_x, start.m_y, start.m_z);
+				glVertex3f(end.m_x, end.m_y, end.m_z);
+			}
+
+		}
+		glEnd();
+	}
+
 
 	//glDisable(GL_COLOR_MATERIAL);
 
@@ -432,37 +503,45 @@ void reshapeScene(int w, int h)
 // 	glMatrixMode(GL_MODELVIEW); // and revert again
 // }
 
-void setDebugMode(int mode, bool value)
+void setRenderMode(int mode, bool value)
 {
-	debugModes[mode] = value;
-	renderScene();
+	renderModes[mode] = value;
 }
 
-void toggleDebugMode(int mode)
+void toggleRenderMode(int mode)
 {
-	setDebugMode(mode, !debugModes[mode]);
+	setRenderMode(mode, !renderModes[mode]);
+}
+
+void printRenderModes()
+{
+	//cout << ""
 }
 
 void keyboard(unsigned char key, int x, int y)
 {
+	bool updateRenderScene = true;
 	switch (key)
 	{
-	case 'x': 
-		toggleDebugMode(HEATMAP);
-		break;
-	default: ;
+	case 'h': toggleRenderMode(RENDERMODE_HEATMAP); break;
+	case 'w':
+	{
+		toggleRenderMode(RENDERMODE_WIREFRAME);
+		glPolygonMode(GL_FRONT_AND_BACK, renderModes[RENDERMODE_WIREFRAME] ? GL_LINE : GL_FILL);
+	} break;
+	case 's': toggleRenderMode(RENDERMODE_SHADING); break;
+	case 'f': toggleRenderMode(RENDERMODE_FACENORMALS); break;
+	case 'v': toggleRenderMode(RENDERMODE_VERTEXNORMALS); break;
+	default:
+		updateRenderScene = false;
 	}
+
+	if(updateRenderScene)
+		renderScene();
 }
 
 void mouse(int button, int state, int x, int y)
 {
-	if (button == 1 && state == 0)
-	{
-		static bool x = true;
-		glPolygonMode(GL_FRONT_AND_BACK, x ? GL_LINE : GL_FILL);
-		x ^= 1;
-	}
-
 	const float deltaWheel = 1.0;
 	if (button == 3) // wheel 
 	{
