@@ -82,6 +82,9 @@ public:
 		m_p[0] = p1;
 		m_p[1] = p2;
 		m_p[2] = p3;
+
+		for (int i = 0; i < 3; i++)
+			m_Crinkled[i] = false;
 	}
 	~CTriangle()
 	{		
@@ -90,6 +93,9 @@ public:
 	CVector m_p[3], m_faceNormal;
 	CVertex *m_vertices[3];
 	CVector m_vertexNormals[3];
+
+	//Visualisation
+	bool m_Crinkled[3];
 };
 
 class CVertex
@@ -104,6 +110,7 @@ public:
 enum
 {
 	RENDERMODE_HEATMAP = 0,
+	RENDERMODE_CRINKLES,
 	RENDERMODE_WIREFRAME,
 	RENDERMODE_SHADING,
 	RENDERMODE_FACENORMALS,
@@ -132,7 +139,8 @@ void calcVertexNormals(vector <CTriangle *>&triangles)
 				GLfloat lenSq1 = v1.m_x*v1.m_x + v1.m_y*v1.m_y + v1.m_z * v1.m_z;
 				GLfloat lenSq2 = v2.m_x*v2.m_x + v2.m_y*v2.m_y + v2.m_z * v2.m_z;
 				GLfloat angle = acos(dot / sqrt(lenSq1 * lenSq2));
-				
+				triangles[t]->m_Crinkled[v] = angle >= limit;
+
 				if (angle < limit)
 				{
 					triangles[t]->m_vertexNormals[v].m_y += pAdjacentTriangle->m_faceNormal.m_y;
@@ -331,7 +339,7 @@ void drawModel()
 	glEnd();
 }
 
-const int markerLength = 1.0;
+const GLfloat markerLength = 1.0;
 
 void drawFaceNormals()
 {
@@ -395,6 +403,58 @@ void drawVertexNormals()
 	}
 }
 
+void drawCrinkles()
+{
+	const GLfloat cubeSize = 0.1f;
+	if (renderModes[RENDERMODE_CRINKLES])
+	{
+		const float color_pink[] = { 1.0, 0.0, 0.0, 1.0 };
+
+		glBegin(GL_LINES);
+		glMaterialfv(GL_FRONT, GL_AMBIENT, color_pink);
+		for (size_t i = 0; i < allTriangles.size(); i++)
+		{
+			CTriangle *pTriangle = allTriangles[i];
+			for (int v = 0; v < 3; v++)
+			{
+				if (pTriangle->m_Crinkled[v])
+				{
+					glVertex3f(pTriangle->m_p[v].m_x - cubeSize, pTriangle->m_p[v].m_y - cubeSize, pTriangle->m_p[v].m_z - cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x - cubeSize, pTriangle->m_p[v].m_y - cubeSize, pTriangle->m_p[v].m_z + cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x - cubeSize, pTriangle->m_p[v].m_y + cubeSize, pTriangle->m_p[v].m_z - cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x - cubeSize, pTriangle->m_p[v].m_y + cubeSize, pTriangle->m_p[v].m_z + cubeSize);
+
+					glVertex3f(pTriangle->m_p[v].m_x + cubeSize, pTriangle->m_p[v].m_y - cubeSize, pTriangle->m_p[v].m_z - cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x + cubeSize, pTriangle->m_p[v].m_y - cubeSize, pTriangle->m_p[v].m_z + cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x + cubeSize, pTriangle->m_p[v].m_y + cubeSize, pTriangle->m_p[v].m_z - cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x + cubeSize, pTriangle->m_p[v].m_y + cubeSize, pTriangle->m_p[v].m_z + cubeSize);
+
+					glVertex3f(pTriangle->m_p[v].m_x - cubeSize, pTriangle->m_p[v].m_y - cubeSize, pTriangle->m_p[v].m_z - cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x + cubeSize, pTriangle->m_p[v].m_y - cubeSize, pTriangle->m_p[v].m_z - cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x - cubeSize, pTriangle->m_p[v].m_y - cubeSize, pTriangle->m_p[v].m_z + cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x + cubeSize, pTriangle->m_p[v].m_y - cubeSize, pTriangle->m_p[v].m_z + cubeSize);
+
+					glVertex3f(pTriangle->m_p[v].m_x - cubeSize, pTriangle->m_p[v].m_y + cubeSize, pTriangle->m_p[v].m_z - cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x + cubeSize, pTriangle->m_p[v].m_y + cubeSize, pTriangle->m_p[v].m_z - cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x - cubeSize, pTriangle->m_p[v].m_y + cubeSize, pTriangle->m_p[v].m_z + cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x + cubeSize, pTriangle->m_p[v].m_y + cubeSize, pTriangle->m_p[v].m_z + cubeSize);
+
+					glVertex3f(pTriangle->m_p[v].m_x - cubeSize, pTriangle->m_p[v].m_y - cubeSize, pTriangle->m_p[v].m_z - cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x - cubeSize, pTriangle->m_p[v].m_y + cubeSize, pTriangle->m_p[v].m_z - cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x - cubeSize, pTriangle->m_p[v].m_y - cubeSize, pTriangle->m_p[v].m_z + cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x - cubeSize, pTriangle->m_p[v].m_y + cubeSize, pTriangle->m_p[v].m_z + cubeSize);
+
+					glVertex3f(pTriangle->m_p[v].m_x + cubeSize, pTriangle->m_p[v].m_y - cubeSize, pTriangle->m_p[v].m_z - cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x + cubeSize, pTriangle->m_p[v].m_y + cubeSize, pTriangle->m_p[v].m_z - cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x + cubeSize, pTriangle->m_p[v].m_y - cubeSize, pTriangle->m_p[v].m_z + cubeSize);
+					glVertex3f(pTriangle->m_p[v].m_x + cubeSize, pTriangle->m_p[v].m_y + cubeSize, pTriangle->m_p[v].m_z + cubeSize);
+				}
+			}
+		}
+		glEnd();
+	}
+}
+
 void setObserver()
 {	
 	// set the observer 
@@ -422,6 +482,7 @@ void renderScene() // this function is called when you need to redraw the scene
 	drawModel();
 	drawFaceNormals();
 	drawVertexNormals();
+	drawCrinkles();
 	
 	glFlush();
 	glutSwapBuffers();
@@ -461,7 +522,14 @@ void toggleRenderMode(int mode)
 
 void printRenderModes()
 {
-	//cout << ""
+	cout << "------- RENDERMODES -------" << endl;
+	cout << "[H]eatmap: " << (renderModes[RENDERMODE_HEATMAP] ? "ON" : "OFF") << endl;
+	cout << "[W]ireframe: " << (renderModes[RENDERMODE_WIREFRAME] ? "ON" : "OFF") << endl;
+	cout << "[S]hading: " << (renderModes[RENDERMODE_SHADING] ? "ON" : "OFF") << endl;
+	cout << "[F]acenormals: " << (renderModes[RENDERMODE_FACENORMALS] ? "ON" : "OFF") << endl;
+	cout << "[V]ertexnormals: " << (renderModes[RENDERMODE_VERTEXNORMALS] ? "ON" : "OFF") << endl;
+	cout << "[C]rinkles: " << (renderModes[RENDERMODE_CRINKLES] ? "ON" : "OFF") << endl;
+	cout << "---------------------------" << endl;
 }
 
 void keyboard(unsigned char key, int x, int y)
@@ -478,12 +546,16 @@ void keyboard(unsigned char key, int x, int y)
 	case 's': toggleRenderMode(RENDERMODE_SHADING); break;
 	case 'f': toggleRenderMode(RENDERMODE_FACENORMALS); break;
 	case 'v': toggleRenderMode(RENDERMODE_VERTEXNORMALS); break;
+	case 'c': toggleRenderMode(RENDERMODE_CRINKLES); break;
 	default:
 		updateRenderScene = false;
 	}
 
-	if(updateRenderScene)
+	if (updateRenderScene)
+	{
+		printRenderModes();
 		renderScene();
+	}
 }
 
 void mouse(int button, int state, int x, int y)
@@ -596,6 +668,8 @@ int main(int argc, char** argv)
 	read_stl(".\\Lower.stl", allTriangles, vertices);
 	calcVertexNormals(allTriangles);
 	normalizeVertices(allTriangles);
+
+	printRenderModes();
 
 	glutMainLoop();
 }
