@@ -122,25 +122,34 @@ enum
 
 bool renderModes[NUM_RENDERMODES] = { false };
 
+float GetAngleBetweenVectors(CVector v1, CVector v2)
+{
+	GLfloat dot = v1.m_x * v2.m_x + v1.m_y * v2.m_y + v1.m_z * v2.m_z;
+	GLfloat lenSq1 = v1.m_x*v1.m_x + v1.m_y*v1.m_y + v1.m_z * v1.m_z;
+	GLfloat lenSq2 = v2.m_x*v2.m_x + v2.m_y*v2.m_y + v2.m_z * v2.m_z;
+
+	return acos(dot / sqrt(lenSq1 * lenSq2));
+}
+
+GLfloat DegreeToRadian(GLfloat value)
+{
+	return M_PI / 180.0 * value;
+}
+
 void calcVertexNormals(vector <CTriangle *>&triangles)
 {
 	cout << "Calculating vertex normals for " << triangles.size() << " triangles" << endl;
-	const GLfloat limit = (float)(M_PI / 180.0 * 70.0);
-
+	const GLfloat limit = DegreeToRadian(70);
 	for (int t = 0; t < triangles.size(); t++)
 	{
 		for (int v = 0; v < 3; v++)
 		{
 			for (int j = 0; j < triangles[t]->m_vertices[v]->m_adjacentTriangles.size(); j++)
 			{
-				CTriangle *pAdjacentTriangle = triangles[t]->m_vertices[v]->m_adjacentTriangles[j];
-
+				CTriangle *pAdjacentTriangle = triangles[t]->m_vertices[v]->m_adjacentTriangles[j];				
 				CVector v1 = triangles[t]->m_faceNormal;
 				CVector v2 = pAdjacentTriangle->m_faceNormal;
-				GLfloat dot = v1.m_x * v2.m_x + v1.m_y * v2.m_y + v1.m_z * v2.m_z;
-				GLfloat lenSq1 = v1.m_x*v1.m_x + v1.m_y*v1.m_y + v1.m_z * v1.m_z;
-				GLfloat lenSq2 = v2.m_x*v2.m_x + v2.m_y*v2.m_y + v2.m_z * v2.m_z;
-				GLfloat angle = acos(dot / sqrt(lenSq1 * lenSq2));
+				GLfloat angle = GetAngleBetweenVectors(v1, v2);
 
 				if (!triangles[t]->m_crinkled[v])
 				{
