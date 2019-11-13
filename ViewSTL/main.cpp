@@ -144,9 +144,10 @@ void calcVertexNormals(vector <CTriangle *>&triangles)
 	{
 		for (int v = 0; v < 3; v++)
 		{
-			for (int j = 0; j < triangles[t]->m_vertices[v]->m_adjacentTriangles.size(); j++)
+			CVertex *pVertex = triangles[t]->m_vertices[v];
+			for (int j = 0; j < pVertex->m_adjacentTriangles.size(); j++)
 			{
-				CTriangle *pAdjacentTriangle = triangles[t]->m_vertices[v]->m_adjacentTriangles[j];				
+				CTriangle *pAdjacentTriangle = pVertex->m_adjacentTriangles[j];
 				CVector v1 = triangles[t]->m_faceNormal;
 				CVector v2 = pAdjacentTriangle->m_faceNormal;
 				GLfloat angle = GetAngleBetweenVectors(v1, v2);
