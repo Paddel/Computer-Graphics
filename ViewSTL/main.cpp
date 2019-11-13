@@ -15,98 +15,9 @@
 #include <GL/glu.h>
 #include <GL/gl.h>
 
+#include "datastructs.h"
+
 using namespace std;
-
-class CVertex;
-
-class CVector
-{
-public:
-
-	CVector():
-		m_x(0.f),
-		m_y(0.f),
-		m_z(0.f)
-	{
-
-	}
-	CVector(char* facet);
-	CVector(GLfloat x, GLfloat y, GLfloat z):
-		m_x(x),
-		m_y(y),
-		m_z(z)
-	{
-
-	}
-
-	~CVector()
-	{
-	}
-
-	GLfloat m_x, m_y, m_z;
-};
-
-//Notice the constructor v3(char* bin); This constructor will help us create an instance of v3 from binary data 
-// found in the STL file.Here's the implementation:
-
-CVector::CVector(char* facet)
-{
-	char f1[4] = { facet[0],
-		facet[1],facet[2],facet[3] };
-
-	char f2[4] = { facet[4],
-		facet[5],facet[6],facet[7] };
-
-	char f3[4] = { facet[8],
-		facet[9],facet[10],facet[11] };
-
-	GLfloat xx = *((GLfloat*)f1);
-	GLfloat yy = *((GLfloat*)f2);
-	GLfloat zz = *((GLfloat*)f3);
-
-	m_x = xx;
-	m_y = yy;
-	m_z = zz;
-}
-
-//We assume that char* facet is really a pointer to a contiguous block of at least nine single precision floats.We then cast the binary data 4 bytes at a time.Note that since our v3 class uses double precision, we must cast the single precision values found in the STL file to double precision.Also, it's not necessary to copy the binary data into three separate char arrays. The first line of the method could have been simply:
-// float xx = *((float*)facet);
-
-// Okay, now we need a simple triangle class :
-class CTriangle
-{
-public:
-	CTriangle(const CVector& p1, const CVector& p2, const CVector& p3, const CVector& normal):
-		m_faceNormal(normal)
-	{
-		m_p[0] = p1;
-		m_p[1] = p2;
-		m_p[2] = p3;
-
-		for (int i = 0; i < 3; i++)
-			m_crinkled[i] = false;
-	}
-	~CTriangle()
-	{		
-	}
-
-	CVector m_p[3], m_faceNormal;
-	CVertex *m_vertices[3];
-	CVector m_vertexNormals[3];
-
-	//Visualisation
-	bool m_crinkled[3];
-	CVector m_vertexNormalsNoEdgeDetection[3];
-};
-
-class CVertex
-{
-public:
-	CVertex() {};
-	CVertex(CTriangle *pFirst) { m_adjacentTriangles.push_back(pFirst); };
-
-	vector<CTriangle *> m_adjacentTriangles;
-};
 
 enum
 {
@@ -133,7 +44,7 @@ float GetAngleBetweenVectors(CVector v1, CVector v2)
 
 GLfloat DegreeToRadian(GLfloat value)
 {
-	return M_PI / 180.0 * value;
+	return (GLfloat)(M_PI / 180.0 * value);
 }
 
 void calcVertexNormals(vector <CTriangle *>&triangles)
@@ -158,35 +69,29 @@ void calcVertexNormals(vector <CTriangle *>&triangles)
 
 				if (angle < limit)
 				{
-					pTriangle->m_vertexNormals[v].m_y += pAdjacentTriangle->m_faceNormal.m_y;
-					pTriangle->m_vertexNormals[v].m_x += pAdjacentTriangle->m_faceNormal.m_x;
-					pTriangle->m_vertexNormals[v].m_z += pAdjacentTriangle->m_faceNormal.m_z;
+					pTriangle->m_vertexNormals[v] += pAdjacentTriangle->m_faceNormal;
 				}
 
-				pTriangle->m_vertexNormalsNoEdgeDetection[v].m_y += pAdjacentTriangle->m_faceNormal.m_y;
-				pTriangle->m_vertexNormalsNoEdgeDetection[v].m_x += pAdjacentTriangle->m_faceNormal.m_x;
-				pTriangle->m_vertexNormalsNoEdgeDetection[v].m_z += pAdjacentTriangle->m_faceNormal.m_z;
+				pTriangle->m_vertexNormalsNoEdgeDetection[v] += pAdjacentTriangle->m_faceNormal;
 			}
 		}
 	}
 }
 
-void normalizeVertices(vector <CTriangle *>&triangles)
+void normalizeVertexNormals(vector <CTriangle *>&triangles)
 {
 	cout << "Normalizing vertices" << endl;
-	for (int t = 0; t < triangles.size(); t++)
+	for (auto pTriangle: triangles)
 	{
 		for (int v = 0; v < 3; v++)
 		{
-			for (int d = 0; d < 2; d++)//extra calculation for m_vertexNormalsNoEdgeDetection
+			for (int d = 0; d < 2; d++) //extra calculation for m_vertexNormalsNoEdgeDetection
 			{
-				CVector *vertex = 0x0;
-				if(d == 0) vertex = &triangles[t]->m_vertexNormals[v];
-				else vertex = &triangles[t]->m_vertexNormalsNoEdgeDetection[v];
+				CVector *vertex = nullptr;
+				if(d == 0) vertex = &pTriangle->m_vertexNormals[v];
+				else vertex = &pTriangle->m_vertexNormalsNoEdgeDetection[v];
 				GLfloat w = sqrt(vertex->m_x * vertex->m_x + vertex->m_y * vertex->m_y + vertex->m_z * vertex->m_z);
-				vertex->m_x /= w;
-				vertex->m_y /= w;
-				vertex->m_z /= w;
+				*vertex /= w;
 			}
 		}
 	}
@@ -340,9 +245,8 @@ void drawModel()
 
 	glBegin(GL_TRIANGLES);
 
-	for (size_t i = 0; i < allTriangles.size(); i++)
+	for (auto pTriangle: allTriangles)
 	{
-		CTriangle *pTriangle = allTriangles[i];
 		for (int j = 0; j < 3; j++)
 		{
 			if (renderModes[RENDERMODE_HEATMAP])
@@ -710,7 +614,7 @@ int main(int argc, char** argv)
 	read_stl(".\\Upper.stl", allTriangles, vertices);
 	read_stl(".\\Lower.stl", allTriangles, vertices);
 	calcVertexNormals(allTriangles);
-	normalizeVertices(allTriangles);
+	normalizeVertexNormals(allTriangles);
 
 	printRenderModes();
 
