@@ -84,7 +84,7 @@ public:
 		m_p[2] = p3;
 
 		for (int i = 0; i < 3; i++)
-			m_Crinkled[i] = false;
+			m_crinkled[i] = false;
 	}
 	~CTriangle()
 	{		
@@ -95,7 +95,7 @@ public:
 	CVector m_vertexNormals[3];
 
 	//Visualisation
-	bool m_Crinkled[3];
+	bool m_crinkled[3];
 	CVector m_vertexNormalsNoEdgeDetection[3];
 };
 
@@ -141,7 +141,11 @@ void calcVertexNormals(vector <CTriangle *>&triangles)
 				GLfloat lenSq1 = v1.m_x*v1.m_x + v1.m_y*v1.m_y + v1.m_z * v1.m_z;
 				GLfloat lenSq2 = v2.m_x*v2.m_x + v2.m_y*v2.m_y + v2.m_z * v2.m_z;
 				GLfloat angle = acos(dot / sqrt(lenSq1 * lenSq2));
-				triangles[t]->m_Crinkled[v] = angle >= limit;
+
+				if (!triangles[t]->m_crinkled[v])
+				{
+					triangles[t]->m_crinkled[v] = angle >= limit;
+				}
 
 				if (angle < limit)
 				{
@@ -275,9 +279,9 @@ float model_ambient[] = { 0.4f, 0.4f, 0.4f, 1.0f };
 // for navigation --------------------------------
 int ox, oy;
 int buttonState = 0;
-float viewRotation[] = { 0.0f, 0.0f, 0.0f };
-const float originalEyeZ = -60.0f;
-float viewTranslation[] = { 0.0f, 0.0f, originalEyeZ };
+float viewRotation[] = { 25.0f, 0.0f, 125.0f };
+const float originalEyeZ = -100.0f;
+float viewTranslation[] = { 0.0f, 0, originalEyeZ };
 double zoomFactor = 1.0;
 const double zoomFactorDelta = 0.01;
 const double zoomFactorMax = 30.0;
@@ -358,13 +362,18 @@ void drawFaceNormals()
 {
 	if (renderModes[RENDERMODE_FACENORMALS])
 	{
-		const float color_white[] = { 1.0, 1.0, 1.0, 1.0 };
+		const float color_irgendwassichtbares[] = { 0.0, 0.0, 1.0, 1.0 };
 
 		glBegin(GL_LINES);
-		glMaterialfv(GL_FRONT, GL_AMBIENT, color_white);
+		glMaterialfv(GL_FRONT, GL_AMBIENT, color_irgendwassichtbares);
 		for (size_t i = 0; i < allTriangles.size(); i++)
 		{
 			CTriangle *pTriangle = allTriangles[i];
+			if (!pTriangle->m_crinkled[0] && !pTriangle->m_crinkled[1] && !pTriangle->m_crinkled[2])
+			{
+				continue;
+			}
+
 			CVector start;
 			CVector end;
 
@@ -397,6 +406,11 @@ void drawVertexNormals()
 			CTriangle *pTriangle = allTriangles[i];
 			for (int v = 0; v < 3; v++)
 			{
+				if (!pTriangle->m_crinkled[v])
+				{
+					continue;
+				}
+
 				CVector *vertex = 0x0;
 				if (!renderModes[RENDERMODE_NOEDGEDETECTION]) vertex = &pTriangle->m_vertexNormals[v];
 				else vertex = &pTriangle->m_vertexNormalsNoEdgeDetection[v];
@@ -434,7 +448,7 @@ void drawCrinkles()
 			CTriangle *pTriangle = allTriangles[i];
 			for (int v = 0; v < 3; v++)
 			{
-				if (pTriangle->m_Crinkled[v])
+				if (pTriangle->m_crinkled[v])
 				{
 					glVertex3f(pTriangle->m_p[v].m_x - cubeSize, pTriangle->m_p[v].m_y - cubeSize, pTriangle->m_p[v].m_z - cubeSize);
 					glVertex3f(pTriangle->m_p[v].m_x - cubeSize, pTriangle->m_p[v].m_y - cubeSize, pTriangle->m_p[v].m_z + cubeSize);
@@ -479,7 +493,6 @@ void setObserver()
 	// he's looking on (0,0,0)
 	// he's in (0,1,0) direction
 	gluLookAt(0, -60.0, 0, 0, 0, 0, 0, 0, 1.0);
-
 	glRotatef(viewRotation[0], 1.0, 0.0, 0.0);
 	glRotatef(viewRotation[2], 0.0, 0.0, 1.0);	
 }
@@ -567,6 +580,8 @@ void keyboard(unsigned char key, int x, int y)
 	case 'c': toggleRenderMode(RENDERMODE_CRINKLES); break;
 	case 'n': toggleRenderMode(RENDERMODE_NOEDGEDETECTION); break;
 	default:
+		cout << viewRotation[0] << viewRotation[1] << viewRotation[2] << endl;
+		cout << viewTranslation[0] << viewTranslation[1] << viewTranslation[2] << endl;
 		updateRenderScene = false;
 	}
 
