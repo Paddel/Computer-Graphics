@@ -140,33 +140,32 @@ void calcVertexNormals(vector <CTriangle *>&triangles)
 {
 	cout << "Calculating vertex normals for " << triangles.size() << " triangles" << endl;
 	const GLfloat limit = DegreeToRadian(70);
-	for (int t = 0; t < triangles.size(); t++)
+	for (auto pTriangle: triangles)
 	{
 		for (int v = 0; v < 3; v++)
 		{
-			CVertex *pVertex = triangles[t]->m_vertices[v];
-			for (int j = 0; j < pVertex->m_adjacentTriangles.size(); j++)
+			CVertex *pVertex = pTriangle->m_vertices[v];
+			for (auto pAdjacentTriangle : pVertex->m_adjacentTriangles)
 			{
-				CTriangle *pAdjacentTriangle = pVertex->m_adjacentTriangles[j];
-				CVector v1 = triangles[t]->m_faceNormal;
+				CVector v1 = pTriangle->m_faceNormal;
 				CVector v2 = pAdjacentTriangle->m_faceNormal;
 				GLfloat angle = GetAngleBetweenVectors(v1, v2);
 
-				if (!triangles[t]->m_crinkled[v])
+				if (!pTriangle->m_crinkled[v])
 				{
-					triangles[t]->m_crinkled[v] = angle >= limit;
+					pTriangle->m_crinkled[v] = angle >= limit;
 				}
 
 				if (angle < limit)
 				{
-					triangles[t]->m_vertexNormals[v].m_y += pAdjacentTriangle->m_faceNormal.m_y;
-					triangles[t]->m_vertexNormals[v].m_x += pAdjacentTriangle->m_faceNormal.m_x;
-					triangles[t]->m_vertexNormals[v].m_z += pAdjacentTriangle->m_faceNormal.m_z;
+					pTriangle->m_vertexNormals[v].m_y += pAdjacentTriangle->m_faceNormal.m_y;
+					pTriangle->m_vertexNormals[v].m_x += pAdjacentTriangle->m_faceNormal.m_x;
+					pTriangle->m_vertexNormals[v].m_z += pAdjacentTriangle->m_faceNormal.m_z;
 				}
 
-				triangles[t]->m_vertexNormalsNoEdgeDetection[v].m_y += pAdjacentTriangle->m_faceNormal.m_y;
-				triangles[t]->m_vertexNormalsNoEdgeDetection[v].m_x += pAdjacentTriangle->m_faceNormal.m_x;
-				triangles[t]->m_vertexNormalsNoEdgeDetection[v].m_z += pAdjacentTriangle->m_faceNormal.m_z;
+				pTriangle->m_vertexNormalsNoEdgeDetection[v].m_y += pAdjacentTriangle->m_faceNormal.m_y;
+				pTriangle->m_vertexNormalsNoEdgeDetection[v].m_x += pAdjacentTriangle->m_faceNormal.m_x;
+				pTriangle->m_vertexNormalsNoEdgeDetection[v].m_z += pAdjacentTriangle->m_faceNormal.m_z;
 			}
 		}
 	}
