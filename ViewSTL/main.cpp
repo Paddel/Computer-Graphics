@@ -96,6 +96,7 @@ public:
 
 	//Visualisation
 	bool m_Crinkled[3];
+	CVector m_vertexNormalsNoEdgeDetection[3];
 };
 
 class CVertex
@@ -115,6 +116,7 @@ enum
 	RENDERMODE_SHADING,
 	RENDERMODE_FACENORMALS,
 	RENDERMODE_VERTEXNORMALS,
+	RENDERMODE_NOEDGEDETECTION,
 	NUM_RENDERMODES,
 };
 
@@ -147,6 +149,10 @@ void calcVertexNormals(vector <CTriangle *>&triangles)
 					triangles[t]->m_vertexNormals[v].m_x += pAdjacentTriangle->m_faceNormal.m_x;
 					triangles[t]->m_vertexNormals[v].m_z += pAdjacentTriangle->m_faceNormal.m_z;
 				}
+
+				triangles[t]->m_vertexNormalsNoEdgeDetection[v].m_y += pAdjacentTriangle->m_faceNormal.m_y;
+				triangles[t]->m_vertexNormalsNoEdgeDetection[v].m_x += pAdjacentTriangle->m_faceNormal.m_x;
+				triangles[t]->m_vertexNormalsNoEdgeDetection[v].m_z += pAdjacentTriangle->m_faceNormal.m_z;
 			}
 		}
 	}
@@ -159,11 +165,16 @@ void normalizeVertices(vector <CTriangle *>&triangles)
 	{
 		for (int v = 0; v < 3; v++)
 		{
-			CVector *vertex = &triangles[t]->m_vertexNormals[v];
-			GLfloat w = sqrt(vertex->m_x * vertex->m_x + vertex->m_y * vertex->m_y + vertex->m_z * vertex->m_z);
-			vertex->m_x /= w;
-			vertex->m_y /= w;
-			vertex->m_z /= w;
+			for (int d = 0; d < 2; d++)//extra calculation for m_vertexNormalsNoEdgeDetection
+			{
+				CVector *vertex = 0x0;
+				if(d == 0) vertex = &triangles[t]->m_vertexNormals[v];
+				else vertex = &triangles[t]->m_vertexNormalsNoEdgeDetection[v];
+				GLfloat w = sqrt(vertex->m_x * vertex->m_x + vertex->m_y * vertex->m_y + vertex->m_z * vertex->m_z);
+				vertex->m_x /= w;
+				vertex->m_y /= w;
+				vertex->m_z /= w;
+			}
 		}
 	}
 }
@@ -329,6 +340,8 @@ void drawModel()
 
 			if (renderModes[RENDERMODE_SHADING])
 				glNormal3f(pTriangle->m_faceNormal.m_x, pTriangle->m_faceNormal.m_y, pTriangle->m_faceNormal.m_z);
+			else if(renderModes[RENDERMODE_NOEDGEDETECTION])
+				glNormal3f(pTriangle->m_vertexNormalsNoEdgeDetection[j].m_x, pTriangle->m_vertexNormalsNoEdgeDetection[j].m_y, pTriangle->m_vertexNormalsNoEdgeDetection[j].m_z);
 			else
 				glNormal3f(pTriangle->m_vertexNormals[j].m_x, pTriangle->m_vertexNormals[j].m_y, pTriangle->m_vertexNormals[j].m_z);
 
@@ -384,6 +397,10 @@ void drawVertexNormals()
 			CTriangle *pTriangle = allTriangles[i];
 			for (int v = 0; v < 3; v++)
 			{
+				CVector *vertex = 0x0;
+				if (!renderModes[RENDERMODE_NOEDGEDETECTION]) vertex = &pTriangle->m_vertexNormals[v];
+				else vertex = &pTriangle->m_vertexNormalsNoEdgeDetection[v];
+
 				CVector start;
 				CVector end;
 
@@ -391,9 +408,9 @@ void drawVertexNormals()
 				start.m_y = pTriangle->m_p[v].m_y;
 				start.m_z = pTriangle->m_p[v].m_z;
 
-				end.m_x = pTriangle->m_p[v].m_x + pTriangle->m_vertexNormals[v].m_x * markerLength;
-				end.m_y = pTriangle->m_p[v].m_y + pTriangle->m_vertexNormals[v].m_y * markerLength;
-				end.m_z = pTriangle->m_p[v].m_z + pTriangle->m_vertexNormals[v].m_z * markerLength;
+				end.m_x = pTriangle->m_p[v].m_x + vertex->m_x * markerLength;
+				end.m_y = pTriangle->m_p[v].m_y + vertex->m_y * markerLength;
+				end.m_z = pTriangle->m_p[v].m_z + vertex->m_z * markerLength;
 
 				glVertex3f(start.m_x, start.m_y, start.m_z);
 				glVertex3f(end.m_x, end.m_y, end.m_z);
@@ -529,6 +546,7 @@ void printRenderModes()
 	cout << "[F]acenormals: " << (renderModes[RENDERMODE_FACENORMALS] ? "ON" : "OFF") << endl;
 	cout << "[V]ertexnormals: " << (renderModes[RENDERMODE_VERTEXNORMALS] ? "ON" : "OFF") << endl;
 	cout << "[C]rinkles: " << (renderModes[RENDERMODE_CRINKLES] ? "ON" : "OFF") << endl;
+	cout << "[N]o edge detection: " << (renderModes[RENDERMODE_NOEDGEDETECTION] ? "ON" : "OFF") << endl;
 	cout << "---------------------------" << endl;
 }
 
@@ -547,6 +565,7 @@ void keyboard(unsigned char key, int x, int y)
 	case 'f': toggleRenderMode(RENDERMODE_FACENORMALS); break;
 	case 'v': toggleRenderMode(RENDERMODE_VERTEXNORMALS); break;
 	case 'c': toggleRenderMode(RENDERMODE_CRINKLES); break;
+	case 'n': toggleRenderMode(RENDERMODE_NOEDGEDETECTION); break;
 	default:
 		updateRenderScene = false;
 	}
