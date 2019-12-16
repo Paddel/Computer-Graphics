@@ -11,3 +11,6 @@ ViewSTL/.vs/ViewSTL/v15/.suo
 *.exe
 *.iobj
 *.lastbuildstate
+ViewSTL/ViewSTL.vcxproj.filters
+ViewSTL/ViewSTL.vcxproj.filters
+*.obj
